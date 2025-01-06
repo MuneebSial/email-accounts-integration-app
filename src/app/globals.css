@@ -1,0 +1,86 @@
+/* Import Tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme variables for light and dark modes */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #2563eb;
+  --secondary: #10b981;
+  --danger: #ef4444;
+  --text-light: #ffffff;
+  --text-dark: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #5f5b5b;
+    --primary: #1d4ed8;
+    --secondary: #059669;
+    --danger: #dc2626;
+  }
+}
+
+/* Global styles */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Utility styles for buttons */
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.primary {
+  background-color: var(--primary);
+  color: var(--text-light);
+}
+
+button.secondary {
+  background-color: var(--secondary);
+  color: var(--text-light);
+}
+
+button.danger {
+  background-color: var(--danger);
+  color: var(--text-light);
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* Utility styles for links */
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Flex utilities for centering */
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Utility for main container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
