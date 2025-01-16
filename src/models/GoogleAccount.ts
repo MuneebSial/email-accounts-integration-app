@@ -7,7 +7,7 @@ export interface IGoogleAccount extends Document {
   picture: string;
   accessToken: string;
   refreshToken: string;
-  expiryDate: Date;
+  expiryDate: number;
   needsReauth: boolean;
 }
 
@@ -18,7 +18,7 @@ const GoogleAccountSchema = new Schema<IGoogleAccount>({
   picture: { type: String, required: true },
   accessToken: { type: String, required: true },
   refreshToken: { type: String, required: true },
-  expiryDate: { type: Date, required: true },
+  expiryDate: { type: Number, required: true },
   needsReauth: { type: Boolean, default: false },
 });
 

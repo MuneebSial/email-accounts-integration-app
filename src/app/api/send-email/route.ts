@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { refreshAccessToken } from "@/utils/refreshToken";
-import oauth2Client from "@/utils/googleAuth";
+import {
+  getAuthenticatedClient,
+  processAccessTokenError,
+} from "@/utils/googleAuth";
+import GoogleAccount from "@/models/GoogleAccount";
+import dbConnect from "@/utils/dbConnect";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,18 +20,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Refresh the access token
-    const accessToken = await refreshAccessToken(accountId);
+    await dbConnect();
 
-    if (!accessToken) {
+    const account = await GoogleAccount.findById(accountId);
+
+    if (!account)
       return NextResponse.json(
-        { error: "Account needs re-authentication." },
-        { status: 403 }
+        { error: "Account not found." },
+        { status: 404 }
       );
-    }
 
-    // Set OAuth2 credentials
-    oauth2Client.setCredentials({ access_token: accessToken });
+    const oauth2Client = await getAuthenticatedClient(account);
 
     // Create Gmail service
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -48,13 +51,17 @@ export async function POST(req: NextRequest) {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
-    // Send the email
-    await gmail.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw: encodedMessage,
-      },
-    });
+    try {
+      // Send the email
+      await gmail.users.messages.send({
+        userId: "me",
+        requestBody: {
+          raw: encodedMessage,
+        },
+      });
+    } catch (error) {
+      await processAccessTokenError(error, account);
+    }
 
     // Return success response
     return NextResponse.json({ message: "Email sent successfully!" });
@@ -63,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     // Return error response
     return NextResponse.json(
-      { error: "Failed to send email. Please try again later." },
+      { message: "Failed to send email. Please try again later.", error },
       { status: 500 }
     );
   }

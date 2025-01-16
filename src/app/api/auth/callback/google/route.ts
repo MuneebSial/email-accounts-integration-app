@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import oauth2Client from "@/utils/googleAuth";
+import { createOAuth2Client } from "@/utils/googleAuth";
 import { google } from "googleapis";
 import dbConnect from "@/utils/dbConnect";
 import GoogleAccount from "@/models/GoogleAccount";
@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Parse the state to get the userId
-    const { userId } = JSON.parse(state);
+    const { userId /*, accountId*/ } = JSON.parse(state);
+
+    const oauth2Client = createOAuth2Client();
 
     // Exchange the authorization code for tokens
     const { tokens } = await oauth2Client.getToken(code);
@@ -36,10 +38,10 @@ export async function GET(req: NextRequest) {
     let account = await GoogleAccount.findOne({ email: userInfo.email });
 
     if (account) {
-      // Update the account with new tokens
       account.accessToken = tokens.access_token;
       account.refreshToken = tokens.refresh_token || account.refreshToken;
-      account.expiryDate = tokens.expiry_date; // Use the expiry_date from the tokens
+      account.expiryDate = tokens.expiry_date;
+      account.needsReauth = false;
     } else {
       // Create a new account
       account = new GoogleAccount({
@@ -49,7 +51,7 @@ export async function GET(req: NextRequest) {
         picture: userInfo.picture,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
-        expiryDate: tokens.expiry_date, // Use the expiry_date from the tokens
+        expiryDate: tokens.expiry_date,
       });
     }
 
