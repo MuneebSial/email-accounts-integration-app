@@ -9,6 +9,9 @@ export interface IGoogleAccount extends Document {
   refreshToken: string;
   expiryDate: number;
   needsReauth: boolean;
+  startHistoryId: string;
+  historyId: string;
+  watchExpiry: number;
 }
 
 const GoogleAccountSchema = new Schema<IGoogleAccount>({
@@ -20,6 +23,9 @@ const GoogleAccountSchema = new Schema<IGoogleAccount>({
   refreshToken: { type: String, required: true },
   expiryDate: { type: Number, required: true },
   needsReauth: { type: Boolean, default: false },
+  startHistoryId: { type: String },
+  historyId: { type: String },
+  watchExpiry: { type: Number },
 });
 
 export default mongoose.models.GoogleAccount ||

@@ -99,7 +99,7 @@ export const refreshTokenWithRetry = async (
       // Try refreshing the token
       const { credentials } = await oauth2Client.refreshAccessToken();
       return credentials; // Return credentials if successful
-    } catch (error) {
+    } catch (error: any) {
       if (attempt < retries - 1) {
         // If not the last attempt, retry after a delay
         const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
@@ -114,6 +114,71 @@ export const refreshTokenWithRetry = async (
 
   // Ensure there's no path that returns undefined
   throw new Error("Failed to refresh access token");
+};
+
+export const refreshWatch = async (
+  googleAccount: IGoogleAccount
+): Promise<void> => {
+  const oauth2Client = await getAuthenticatedClient(googleAccount);
+  try {
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    const response = await gmail.users.watch({
+      userId: "me",
+      requestBody: {
+        labelIds: ["INBOX"],
+        topicName: process.env.GOOGLE_PUBSUB_TOPIC_NAME!,
+      },
+    });
+
+    const watchResponse = response.data;
+
+    if (!googleAccount.historyId)
+      googleAccount.startHistoryId =
+        watchResponse.historyId || googleAccount.historyId;
+    googleAccount.historyId =
+      watchResponse.historyId || googleAccount.historyId;
+    googleAccount.watchExpiry =
+      Number(watchResponse.expiration) || Date.now() + 604800000; // Typically watch expires in 7 days
+
+    await googleAccount.save();
+    console.log(`Watch refreshed for user: ${googleAccount.email}`);
+  } catch (error) {
+    console.error(
+      `Failed to refresh watch for user ${googleAccount.email}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+export const fetchHistory = async (
+  oauth2Client: Auth.OAuth2Client,
+  historyId: string
+): Promise<any> => {
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+  const response = await gmail.users.history.list({
+    userId: "me",
+    startHistoryId: historyId,
+    historyTypes: ["messageAdded"], // Filter only new messages
+  });
+
+  return response.data.history || [];
+};
+
+export const fetchEmailContent = async (
+  oauth2Client: Auth.OAuth2Client,
+  messageId: string
+): Promise<any> => {
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+  const response = await gmail.users.messages.get({
+    userId: "me",
+    id: messageId,
+    format: "full", // Options: 'full', 'metadata', 'minimal'
+  });
+
+  return response.data;
 };
 
 /**

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOAuth2Client } from "@/utils/googleAuth";
-import { google } from "googleapis";
+import { google, Auth } from "googleapis";
 import dbConnect from "@/utils/dbConnect";
-import GoogleAccount from "@/models/GoogleAccount";
+import GoogleAccount, { IGoogleAccount } from "@/models/GoogleAccount";
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,12 +35,14 @@ export async function GET(req: NextRequest) {
     const { data: userInfo } = await oauth2.userinfo.get();
 
     // Check if the account already exists
-    let account = await GoogleAccount.findOne({ email: userInfo.email });
+    let account = await GoogleAccount.findOne<IGoogleAccount | null>({
+      email: userInfo.email,
+    });
 
     if (account) {
-      account.accessToken = tokens.access_token;
+      account.accessToken = tokens.access_token!;
       account.refreshToken = tokens.refresh_token || account.refreshToken;
-      account.expiryDate = tokens.expiry_date;
+      account.expiryDate = tokens.expiry_date!;
       account.needsReauth = false;
     } else {
       // Create a new account
@@ -55,8 +57,28 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    async function registerWatch(oauth2Client: Auth.OAuth2Client) {
+      const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+      const response = await gmail.users.watch({
+        userId: "me",
+        requestBody: {
+          labelIds: ["INBOX"],
+          topicName: process.env.GOOGLE_PUBSUB_TOPIC_NAME!,
+        },
+      });
+      return response.data;
+    }
+
+    const watchResponse = await registerWatch(oauth2Client);
+    console.log("Watch registered successfully:", watchResponse);
+
+    if (!account!.historyId) account!.startHistoryId = watchResponse.historyId!;
+    account!.historyId = watchResponse.historyId!;
+    account!.watchExpiry =
+      Number(watchResponse.expiration!) || Date.now() + 604800000; // Typically watch expires in 7 days
+
     // Save the account
-    await account.save();
+    await account!.save();
 
     // Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard/accounts", req.url));
