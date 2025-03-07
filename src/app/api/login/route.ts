@@ -6,7 +6,6 @@ export async function POST(req: NextRequest) {
   try {
     const { username } = await req.json();
 
-    // Validate username
     if (
       !username ||
       typeof username !== "string" ||
@@ -20,7 +19,6 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Check if user exists
     const user = await User.findOne({ username });
     if (!user) {
       return NextResponse.json(
@@ -29,7 +27,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Set the userId cookie
     const response = NextResponse.json({
       message: "Login successful.",
       userId: user._id,
